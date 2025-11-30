@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cosmovon</title>
+
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=TikTok+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:"TikTok Sans",sans-serif;background:#fafafa;color:#111;overflow-x:hidden;}
+header{font-family:"Instrument Serif", serif;font-size:32px;text-align:center;padding:20px 0 10px 0;letter-spacing:-0.5px;}
+main{max-width:900px;margin:20px auto;padding:0 16px;}
+.news-item{background:white;padding:24px;border-radius:14px;margin-bottom:24px;border:1px solid #eaeaea;}
+.news-title{font-family:"Instrument Serif", serif;font-size:28px;margin-bottom:12px;line-height:1.2;}
+.news-body{font-size:16px;line-height:1.6;color:#333;}
+.news-item img{width:100%;margin-top:16px;border-radius:12px;}
+
+/* SEARCH BUTTON */
+#openSearchButton {
+    position: fixed;
+    top: 90px; /* moved slightly down to avoid overlap with header */
+    right: 20px;
+    width:42px;
+    height:42px;
+    border-radius:50%;
+    border:1px solid #ccc;
+    background:white;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    cursor:pointer;
+    z-index:20;
+    transition:opacity .2s ease;
+}
+
+#openSearchButton:hover{opacity:0.8;}
+
+/* SEARCH OVERLAY */
+#searchOverlay{
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    background:rgba(250,250,250,0.97);
+    opacity:0; pointer-events:none; transition:opacity .25s ease;
+    z-index:50; display:flex; flex-direction:column; padding:30px;
+}
+#searchOverlay.active{opacity:1; pointer-events:auto;}
+#searchBox{width:calc(100% - 40px); margin:80px auto 0 auto; padding:14px 18px; font-size:18px; border-radius:12px; border:1px solid #ccc; outline:none; display:block;}
+#closeSearch{position:absolute; top:35px; right:25px; font-size:22px; cursor:pointer; opacity:0.7;}
+
+/* ADD STORY BUTTON */
+#addButton{
+    position:fixed; bottom:40px; right:30px; width:58px; height:58px;
+    border-radius:50%; background:black; color:white; font-size:32px;
+    display:flex; justify-content:center; align-items:center; cursor:pointer; z-index:20; transition:transform .2s ease;
+}
+#addButton:hover{transform:scale(1.05);}
+
+/* STORY PANEL */
+#storyPanel{
+    position:fixed; bottom:0; left:0; width:100%; height:82%;
+    background:white; border-top-left-radius:26px; border-top-right-radius:26px;
+    transform:translateY(120%); transition:transform .35s ease;
+    z-index:100; display:flex; flex-direction:column; padding:22px;
+}
+#storyPanel.active{transform:translateY(0);}
+#closeStory{position:absolute; top:16px; right:22px; font-size:22px; cursor:pointer; opacity:0.7;}
+#storyTitle{font-family:"Instrument Serif", serif; font-size:24px; border:none; outline:none; margin-top:52px;}
+#storyBody{margin-top:18px; border:none; outline:none; height:100%; resize:none; font-size:17px; font-family:"TikTok Sans",sans-serif;}
+#publishButton{margin-top:14px; padding:12px; background:black; color:white; border:none; font-size:17px; border-radius:10px; cursor:pointer;}
+</style>
+</head>
+
+<body>
+<header>Cosmovon</header>
+
+<main>
+    <div id="newsList"></div>
+</main>
+
+<!-- SEARCH BUTTON -->
+<div id="openSearchButton">⌕</div>
+
+<!-- SEARCH OVERLAY -->
+<div id="searchOverlay">
+    <div id="closeSearch">✕</div>
+    <input id="searchBox" placeholder="Search...">
+    <div id="searchResults"></div>
+</div>
+
+<div id="fullStoryPanel">
+    <div id="closeFullStory">✕</div>
+    <div id="fullStoryTitle"></div>
+    <div id="fullStoryBody"></div>
+</div>
+
+<!-- ADD STORY BUTTON -->
+<div id="addButton">+</div>
+
+<!-- STORY PANEL -->
+<div id="storyPanel">
+    <div id="closeStory">✕</div>
+    <input id="storyTitle" placeholder="Title...">
+    <textarea id="storyBody" placeholder="Write your story..."></textarea>
+    <button id="publishButton">Publish</button>
+</div>
+
+<style>
+#fullStoryPanel{
+    position:fixed; bottom:0; left:0; width:100%; height:100%;
+    background:white; z-index:150; display:flex; flex-direction:column;
+    padding:30px; overflow-y:auto;
+    transform: translateY(120%);
+    transition: transform .35s ease;
+}
+#fullStoryPanel.active{
+    transform: translateY(0);
+}
+#closeFullStory{position:absolute; top:20px; right:25px; font-size:22px; cursor:pointer; opacity:0.7;}
+#fullStoryTitle{font-family:"Instrument Serif", serif; font-size:28px; margin-top:60px; margin-bottom:20px;}
+#fullStoryBody{font-family:"TikTok Sans",sans-serif; font-size:17px; line-height:1.6;}
+</style>
+
+<script>
+let news = [];
+
+// DOM Elements
+const newsList = document.getElementById("newsList");
+const addButton = document.getElementById("addButton");
+const storyPanel = document.getElementById("storyPanel");
+const closeStory = document.getElementById("closeStory");
+const storyTitle = document.getElementById("storyTitle");
+const storyBody = document.getElementById("storyBody");
+const publishButton = document.getElementById("publishButton");
+
+const openSearchButton = document.getElementById("openSearchButton");
+const searchOverlay = document.getElementById("searchOverlay");
+const closeSearch = document.getElementById("closeSearch");
+const searchBox = document.getElementById("searchBox");
+const searchResults = document.getElementById("searchResults");
+
+const fullStoryPanel = document.getElementById("fullStoryPanel");
+const closeFullStory = document.getElementById("closeFullStory");
+const fullStoryTitle = document.getElementById("fullStoryTitle");
+const fullStoryBody = document.getElementById("fullStoryBody");
+
+// OPEN/CLOSE STORY PANEL
+addButton.onclick = () => storyPanel.classList.add("active");
+closeStory.onclick = () => storyPanel.classList.remove("active");
+
+// OPEN/CLOSE SEARCH
+openSearchButton.onclick = () => searchOverlay.classList.add("active");
+closeSearch.onclick = () => searchOverlay.classList.remove("active");
+
+// OPEN/CLOSE FULL STORY
+function openFullStory(item) {
+    fullStoryTitle.textContent = item.title;
+    fullStoryBody.textContent = item.body;
+    fullStoryPanel.classList.add("active");
+}
+closeFullStory.onclick = () => fullStoryPanel.classList.remove("active");
+
+// RENDER NEWS ITEMS
+function renderNews() {
+    newsList.innerHTML = "";
+    news.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "news-item";
+        div.innerHTML = `
+            <div class="news-title">${item.title}</div>
+            <div class="news-body">${item.body}</div>
+            ${item.image ? `<img src="${item.image}">` : ''}
+        `;
+        div.onclick = () => openFullStory(item);
+        newsList.appendChild(div);
+    });
+}
+
+// SEARCH FUNCTIONALITY
+searchBox.addEventListener("input", () => {
+    const q = searchBox.value.toLowerCase();
+    searchResults.innerHTML = "";
+    if (!q.trim()) return;
+
+    news.filter(n => n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q))
+        .forEach(item => {
+            const d = document.createElement("div");
+            d.className = "search-result-item";
+            d.innerHTML = `
+                <div class="news-title">${item.title}</div>
+                <div class="news-body">${item.body.substring(0, 120)}...</div>
+            `;
+            d.onclick = () => {
+                openFullStory(item);
+                searchOverlay.classList.remove("active");
+            };
+            searchResults.appendChild(d);
+        });
+});
+
+// PUBLISH BUTTON
+publishButton.onclick = () => {
+    const title = storyTitle.value.trim();
+    const body = storyBody.value.trim();
+
+    if (!title || !body) {
+        alert("Need title and body.");
+        return;
+    }
+
+    fetch("/news", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ title, body, image: null })
+    })
+    .then(res => res.json())
+    .then(() => {
+        storyTitle.value = "";
+        storyBody.value = "";
+        storyPanel.classList.remove("active");
+
+        // Reload stories from server (since no socket.io)
+        fetch("/news")
+            .then(res => res.json())
+            .then(data => {
+                news = data;
+                renderNews();
+            });
+    });
+};
+
+// INITIAL LOAD
+fetch("/news")
+    .then(res => res.json())
+    .then(data => {
+        news = data;
+        renderNews();
+    });
+
+
+</script>
+
+</body>
+</html>
