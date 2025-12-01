@@ -126,122 +126,85 @@ main{max-width:900px;margin:20px auto;padding:0 16px;}
 </style>
 
 <script>
-let news = [];
+let stories = JSON.parse(localStorage.getItem("stories")) || [];
 
-// DOM Elements
 const newsList = document.getElementById("newsList");
-const addButton = document.getElementById("addButton");
 const storyPanel = document.getElementById("storyPanel");
+const addButton = document.getElementById("addButton");
 const closeStory = document.getElementById("closeStory");
+const publishButton = document.getElementById("publishButton");
 const storyTitle = document.getElementById("storyTitle");
 const storyBody = document.getElementById("storyBody");
-const publishButton = document.getElementById("publishButton");
 
-const openSearchButton = document.getElementById("openSearchButton");
-const searchOverlay = document.getElementById("searchOverlay");
-const closeSearch = document.getElementById("closeSearch");
-const searchBox = document.getElementById("searchBox");
-const searchResults = document.getElementById("searchResults");
+// ===== NEW: create <input type="file"> dynamically =====
+let storyImage = document.createElement("input");
+storyImage.type = "file";
+storyImage.accept = "image/*";
+storyImage.style.marginTop = "10px";
+document.getElementById("storyPanel").appendChild(storyImage);
 
-const fullStoryPanel = document.getElementById("fullStoryPanel");
-const closeFullStory = document.getElementById("closeFullStory");
-const fullStoryTitle = document.getElementById("fullStoryTitle");
-const fullStoryBody = document.getElementById("fullStoryBody");
-
-// OPEN/CLOSE STORY PANEL
-addButton.onclick = () => storyPanel.classList.add("active");
-closeStory.onclick = () => storyPanel.classList.remove("active");
-
-// OPEN/CLOSE SEARCH
-openSearchButton.onclick = () => searchOverlay.classList.add("active");
-closeSearch.onclick = () => searchOverlay.classList.remove("active");
-
-// OPEN/CLOSE FULL STORY
-function openFullStory(item) {
-    fullStoryTitle.textContent = item.title;
-    fullStoryBody.textContent = item.body;
-    fullStoryPanel.classList.add("active");
-}
-closeFullStory.onclick = () => fullStoryPanel.classList.remove("active");
-
-// RENDER NEWS ITEMS
-function renderNews() {
+// render stories
+function renderStories() {
     newsList.innerHTML = "";
-    news.forEach(item => {
-        const div = document.createElement("div");
-        div.className = "news-item";
-        div.innerHTML = `
-            <div class="news-title">${item.title}</div>
-            <div class="news-body">${item.body}</div>
-            ${item.image ? `<img src="${item.image}">` : ''}
+
+    stories.forEach((story, index) => {
+        const item = document.createElement("div");
+        item.className = "news-item";
+
+        item.innerHTML = `
+            <div class="news-title">${story.title}</div>
+            <div class="news-body">${story.body}</div>
+            ${story.image ? `<img src="${story.image}">` : ""}
         `;
-        div.onclick = () => openFullStory(item);
-        newsList.appendChild(div);
+
+        newsList.appendChild(item);
     });
 }
 
-// SEARCH FUNCTIONALITY
-searchBox.addEventListener("input", () => {
-    const q = searchBox.value.toLowerCase();
-    searchResults.innerHTML = "";
-    if (!q.trim()) return;
-
-    news.filter(n => n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q))
-        .forEach(item => {
-            const d = document.createElement("div");
-            d.className = "search-result-item";
-            d.innerHTML = `
-                <div class="news-title">${item.title}</div>
-                <div class="news-body">${item.body.substring(0, 120)}...</div>
-            `;
-            d.onclick = () => {
-                openFullStory(item);
-                searchOverlay.classList.remove("active");
-            };
-            searchResults.appendChild(d);
-        });
+// open panel
+addButton.addEventListener("click", () => {
+    storyPanel.classList.add("active");
 });
 
-// PUBLISH BUTTON
-publishButton.onclick = () => {
+// close panel
+closeStory.addEventListener("click", () => {
+    storyPanel.classList.remove("active");
+});
+
+// publish story
+publishButton.addEventListener("click", () => {
     const title = storyTitle.value.trim();
     const body = storyBody.value.trim();
 
-    if (!title || !body) {
-        alert("Need title and body.");
-        return;
+    if (!title || !body) return;
+
+    // read image as Base64
+    if (storyImage.files[0]) {
+        const reader = new FileReader();
+        reader.onload = () => {
+            stories.push({
+                title,
+                body,
+                image: reader.result
+            });
+            localStorage.setItem("stories", JSON.stringify(stories));
+            renderStories();
+        };
+        reader.readAsDataURL(storyImage.files[0]);
+    } else {
+        stories.push({ title, body, image: null });
+        localStorage.setItem("stories", JSON.stringify(stories));
+        renderStories();
     }
 
-    fetch("/news", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ title, body, image: null })
-    })
-    .then(res => res.json())
-    .then(() => {
-        storyTitle.value = "";
-        storyBody.value = "";
-        storyPanel.classList.remove("active");
+    storyTitle.value = "";
+    storyBody.value = "";
+    storyImage.value = "";
+    storyPanel.classList.remove("active");
+});
 
-        // Reload stories from server (since no socket.io)
-        fetch("/news")
-            .then(res => res.json())
-            .then(data => {
-                news = data;
-                renderNews();
-            });
-    });
-};
-
-// INITIAL LOAD
-fetch("/news")
-    .then(res => res.json())
-    .then(data => {
-        news = data;
-        renderNews();
-    });
-
-
+// load existing stories
+renderStories();
 </script>
 
 </body>
