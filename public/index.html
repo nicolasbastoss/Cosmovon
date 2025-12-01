@@ -177,7 +177,7 @@ main{max-width:900px;margin:20px auto;padding:0 16px;}
 <script>
 let news = [];
 
-// DOM elements
+// ELEMENTS
 const newsList = document.getElementById("newsList");
 const addButton = document.getElementById("addButton");
 const storyPanel = document.getElementById("storyPanel");
@@ -201,14 +201,19 @@ const fullStoryBody = document.getElementById("fullStoryBody");
 let currentStoryIndex = null;
 const deleteStoryButton = document.getElementById("deleteStoryButton");
 
-    
+
 // PANEL TOGGLES
 addButton.onclick = () => storyPanel.classList.add("active");
 closeStory.onclick = () => storyPanel.classList.remove("active");
 openSearchButton.onclick = () => searchOverlay.classList.add("active");
 closeSearch.onclick = () => searchOverlay.classList.remove("active");
-closeFullStory.onclick = () => fullStoryPanel.classList.remove("active");
+closeFullStory.onclick = () => {
+    fullStoryPanel.classList.remove("active");
+    deleteStoryButton.style.display = "none";
+};
 
+
+// OPEN FULL STORY
 function openFullStory(item, index) {
     currentStoryIndex = index;
 
@@ -222,35 +227,26 @@ function openFullStory(item, index) {
     fullStoryPanel.classList.add("active");
 }
 
-    fullStoryPanel.classList.add("active");
-}
 
-// RENDER NEWS
+// RENDER ALL STORIES
 function renderNews() {
     newsList.innerHTML = "";
-    news.forEach(item => {
+
+    news.forEach((item, i) => {
         const div = document.createElement("div");
         div.className = "news-item";
+
         div.innerHTML = `
-    <div class="news-title">${item.title}</div>
-    ${item.image ? `<img class="news-thumb" src="${item.image}">` : ""}
-    <div class="news-body">${item.body.substring(0, 150)}...</div>
-    <button class="delete-btn" data-id="${item.id}">Delete</button>
-`;
-       div.onclick = () => openFullStory(item, i);
+            <div class="news-title">${item.title}</div>
+            ${item.image ? `<img class="news-thumb" src="${item.image}">` : ""}
+            <div class="news-body">${item.body.substring(0, 150)}...</div>
+        `;
+
+        div.onclick = () => openFullStory(item, i);
         newsList.appendChild(div);
     });
 }
 
-newsList.addEventListener("click", e => {
-    if (e.target.classList.contains("delete-btn")) {
-        const id = Number(e.target.getAttribute("data-id"));
-        news = news.filter(item => item.id !== id);
-        localStorage.setItem("cosmovonNews", JSON.stringify(news));
-        renderNews();
-        e.stopPropagation();
-    }
-});
 
 // SEARCH
 searchBox.addEventListener("input", () => {
@@ -258,23 +254,28 @@ searchBox.addEventListener("input", () => {
     searchResults.innerHTML = "";
     if (!q.trim()) return;
 
-    news.filter(n => n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q))
-        .forEach(item => {
+    news
+        .filter(n => n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q))
+        .forEach((item, i) => {
             const d = document.createElement("div");
             d.className = "search-result-item";
+
             d.innerHTML = `
                 <div class="news-title">${item.title}</div>
                 <div class="news-body">${item.body.substring(0, 120)}...</div>
             `;
+
             d.onclick = () => {
-                openFullStory(item);
+                openFullStory(item, i);
                 searchOverlay.classList.remove("active");
             };
+
             searchResults.appendChild(d);
         });
 });
 
-// PUBLISH (LOCALSTORAGE VERSION)
+
+// PUBLISH
 publishButton.onclick = () => {
     const title = storyTitle.value.trim();
     const body = storyBody.value.trim();
@@ -284,28 +285,28 @@ publishButton.onclick = () => {
         return;
     }
 
-    let imageBase64 = null;
-
     if (storyImage.files.length > 0) {
-        const file = storyImage.files[0];
         const reader = new FileReader();
         reader.onload = () => {
-            imageBase64 = reader.result;
-            saveNote(title, body, imageBase64);
+            saveNote(title, body, reader.result);
         };
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(storyImage.files[0]);
     } else {
         saveNote(title, body, null);
     }
 };
 
+
+// SAVE STORY
 function saveNote(title, body, image) {
-    const item = { 
-    id: Date.now(),
-    title, 
-    body, 
-    image 
-};
+    const item = {
+        id: Date.now(),
+        title,
+        body,
+        image
+    };
+
+    news.unshift(item);
     localStorage.setItem("cosmovonNews", JSON.stringify(news));
     renderNews();
 
@@ -316,14 +317,8 @@ function saveNote(title, body, image) {
     storyPanel.classList.remove("active");
 }
 
-// INITIAL LOAD
-document.addEventListener("DOMContentLoaded", () => {
-    const saved = localStorage.getItem("cosmovonNews");
-    if (saved) news = JSON.parse(saved);
-    renderNews();
-});
 
-
+// DELETE FULL STORY
 deleteStoryButton.onclick = () => {
     if (currentStoryIndex !== null) {
         news.splice(currentStoryIndex, 1);
@@ -334,7 +329,13 @@ deleteStoryButton.onclick = () => {
     }
 };
 
-    
+
+// LOAD ON START
+document.addEventListener("DOMContentLoaded", () => {
+    const saved = localStorage.getItem("cosmovonNews");
+    if (saved) news = JSON.parse(saved);
+    renderNews();
+});
 </script>
 
 
