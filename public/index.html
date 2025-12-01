@@ -227,6 +227,16 @@ function renderNews() {
     });
 }
 
+newsList.addEventListener("click", e => {
+    if (e.target.classList.contains("delete-btn")) {
+        const id = Number(e.target.getAttribute("data-id"));
+        news = news.filter(item => item.id !== id);
+        localStorage.setItem("cosmovonNews", JSON.stringify(news));
+        renderNews();
+        e.stopPropagation();
+    }
+});
+
 // SEARCH
 searchBox.addEventListener("input", () => {
     const q = searchBox.value.toLowerCase();
