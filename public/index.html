@@ -72,6 +72,9 @@ main{max-width:900px;margin:20px auto;padding:0 16px;}
 #storyTitle{font-family:"Instrument Serif", serif; font-size:24px; border:none; outline:none; margin-top:52px;}
 #storyBody{margin-top:18px; border:none; outline:none; height:100%; resize:none; font-size:17px; font-family:"TikTok Sans",sans-serif;}
 #publishButton{margin-top:14px; padding:12px; background:black; color:white; border:none; font-size:17px; border-radius:10px; cursor:pointer;}
+#storyImage { margin-top: 12px; padding: 10px; border: 1px solid #ddd;border-radius: 10px; font-size: 15px;background: #fafafa;}
+.news-item img {width: 60%;max-width: 260px;display: block;margin: 14px auto 0 auto;border-radius: 10px;opacity: 0.95;}
+
 </style>
 </head>
 
@@ -106,6 +109,7 @@ main{max-width:900px;margin:20px auto;padding:0 16px;}
     <div id="closeStory">✕</div>
     <input id="storyTitle" placeholder="Title...">
     <textarea id="storyBody" placeholder="Write your story..."></textarea>
+    <input type="file" id="storyImage" accept="image/*">
     <button id="publishButton">Publish</button>
 </div>
 
@@ -126,86 +130,132 @@ main{max-width:900px;margin:20px auto;padding:0 16px;}
 </style>
 
 <script>
-let stories = JSON.parse(localStorage.getItem("stories")) || [];
+let news = [];
 
+// DOM elements
 const newsList = document.getElementById("newsList");
-const storyPanel = document.getElementById("storyPanel");
 const addButton = document.getElementById("addButton");
+const storyPanel = document.getElementById("storyPanel");
 const closeStory = document.getElementById("closeStory");
-const publishButton = document.getElementById("publishButton");
 const storyTitle = document.getElementById("storyTitle");
 const storyBody = document.getElementById("storyBody");
+const storyImage = document.getElementById("storyImage");
+const publishButton = document.getElementById("publishButton");
 
-// ===== NEW: create <input type="file"> dynamically =====
-let storyImage = document.createElement("input");
-storyImage.type = "file";
-storyImage.accept = "image/*";
-storyImage.style.marginTop = "10px";
-document.getElementById("storyPanel").appendChild(storyImage);
+const openSearchButton = document.getElementById("openSearchButton");
+const searchOverlay = document.getElementById("searchOverlay");
+const closeSearch = document.getElementById("closeSearch");
+const searchBox = document.getElementById("searchBox");
+const searchResults = document.getElementById("searchResults");
 
-// render stories
-function renderStories() {
+const fullStoryPanel = document.getElementById("fullStoryPanel");
+const closeFullStory = document.getElementById("closeFullStory");
+const fullStoryTitle = document.getElementById("fullStoryTitle");
+const fullStoryBody = document.getElementById("fullStoryBody");
+
+// PANEL TOGGLES
+addButton.onclick = () => storyPanel.classList.add("active");
+closeStory.onclick = () => storyPanel.classList.remove("active");
+openSearchButton.onclick = () => searchOverlay.classList.add("active");
+closeSearch.onclick = () => searchOverlay.classList.remove("active");
+closeFullStory.onclick = () => fullStoryPanel.classList.remove("active");
+
+function openFullStory(item) {
+    fullStoryTitle.textContent = item.title;
+    fullStoryBody.innerHTML = item.body.replace(/\n/g, "<br>");
+
+    if (item.image) {
+        fullStoryBody.innerHTML += `<img src="${item.image}" style="width:60%;max-width:300px;margin-top:20px;border-radius:10px;">`;
+    }
+
+    fullStoryPanel.classList.add("active");
+}
+
+// RENDER NEWS
+function renderNews() {
     newsList.innerHTML = "";
-
-    stories.forEach((story, index) => {
-        const item = document.createElement("div");
-        item.className = "news-item";
-
-        item.innerHTML = `
-            <div class="news-title">${story.title}</div>
-            <div class="news-body">${story.body}</div>
-            ${story.image ? `<img src="${story.image}">` : ""}
+    news.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "news-item";
+        div.innerHTML = `
+            <div class="news-title">${item.title}</div>
+            <div class="news-body">${item.body.substring(0, 150)}...</div>
+            ${item.image ? `<img src="${item.image}">` : ""}
         `;
-
-        newsList.appendChild(item);
+        div.onclick = () => openFullStory(item);
+        newsList.appendChild(div);
     });
 }
 
-// open panel
-addButton.addEventListener("click", () => {
-    storyPanel.classList.add("active");
+// SEARCH
+searchBox.addEventListener("input", () => {
+    const q = searchBox.value.toLowerCase();
+    searchResults.innerHTML = "";
+    if (!q.trim()) return;
+
+    news.filter(n => n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q))
+        .forEach(item => {
+            const d = document.createElement("div");
+            d.className = "search-result-item";
+            d.innerHTML = `
+                <div class="news-title">${item.title}</div>
+                <div class="news-body">${item.body.substring(0, 120)}...</div>
+            `;
+            d.onclick = () => {
+                openFullStory(item);
+                searchOverlay.classList.remove("active");
+            };
+            searchResults.appendChild(d);
+        });
 });
 
-// close panel
-closeStory.addEventListener("click", () => {
-    storyPanel.classList.remove("active");
-});
-
-// publish story
-publishButton.addEventListener("click", () => {
+// PUBLISH (LOCALSTORAGE VERSION)
+publishButton.onclick = () => {
     const title = storyTitle.value.trim();
     const body = storyBody.value.trim();
 
-    if (!title || !body) return;
+    if (!title || !body) {
+        alert("Title and story required.");
+        return;
+    }
 
-    // read image as Base64
-    if (storyImage.files[0]) {
+    let imageBase64 = null;
+
+    if (storyImage.files.length > 0) {
+        const file = storyImage.files[0];
         const reader = new FileReader();
         reader.onload = () => {
-            stories.push({
-                title,
-                body,
-                image: reader.result
-            });
-            localStorage.setItem("stories", JSON.stringify(stories));
-            renderStories();
+            imageBase64 = reader.result;
+            saveNote(title, body, imageBase64);
         };
-        reader.readAsDataURL(storyImage.files[0]);
+        reader.readAsDataURL(file);
     } else {
-        stories.push({ title, body, image: null });
-        localStorage.setItem("stories", JSON.stringify(stories));
-        renderStories();
+        saveNote(title, body, null);
     }
+};
+
+function saveNote(title, body, image) {
+    const item = { title, body, image };
+    news.unshift(item);
+
+    localStorage.setItem("cosmovonNews", JSON.stringify(news));
+    renderNews();
 
     storyTitle.value = "";
     storyBody.value = "";
     storyImage.value = "";
-    storyPanel.classList.remove("active");
-});
 
-// load existing stories
-renderStories();
+    storyPanel.classList.remove("active");
+}
+
+// INITIAL LOAD
+document.addEventListener("DOMContentLoaded", () => {
+    const saved = localStorage.getItem("cosmovonNews");
+    if (saved) news = JSON.parse(saved);
+    renderNews();
+});
 </script>
+
 
 </body>
 </html>
