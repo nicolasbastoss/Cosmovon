@@ -148,6 +148,21 @@ main{max-width:900px;margin:20px auto;padding:0 16px;}
     margin-top: 18px;
 }
 
+
+.delete-btn {
+    margin-top: 12px;
+    padding: 8px 12px;
+    font-size: 14px;
+    background: #ff4444;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.delete-btn:hover {
+    opacity: 0.85;
+}
+
 #closeFullStory{position:absolute; top:20px; right:25px; font-size:22px; cursor:pointer; opacity:0.7;}
 #fullStoryTitle{font-family:"Instrument Serif", serif; font-size:28px; margin-top:60px; margin-bottom:20px;}
 #fullStoryBody{font-family:"TikTok Sans",sans-serif; font-size:17px; line-height:1.6;}
@@ -205,6 +220,7 @@ function renderNews() {
     <div class="news-title">${item.title}</div>
     ${item.image ? `<img class="news-thumb" src="${item.image}">` : ""}
     <div class="news-body">${item.body.substring(0, 150)}...</div>
+    <button class="delete-btn" data-id="${item.id}">Delete</button>
 `;
         div.onclick = () => openFullStory(item);
         newsList.appendChild(div);
@@ -259,9 +275,12 @@ publishButton.onclick = () => {
 };
 
 function saveNote(title, body, image) {
-    const item = { title, body, image };
-    news.unshift(item);
-
+    const item = { 
+    id: Date.now(),
+    title, 
+    body, 
+    image 
+};
     localStorage.setItem("cosmovonNews", JSON.stringify(news));
     renderNews();
 
