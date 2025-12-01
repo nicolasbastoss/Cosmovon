@@ -97,6 +97,7 @@ main{max-width:900px;margin:20px auto;padding:0 16px;}
 
 <div id="fullStoryPanel">
     <div id="closeFullStory">✕</div>
+    <button id="deleteStoryButton">🗑️</button>
     <div id="fullStoryTitle"></div>
     <div id="fullStoryBody"></div>
 </div>
@@ -148,19 +149,24 @@ main{max-width:900px;margin:20px auto;padding:0 16px;}
     margin-top: 18px;
 }
 
-
-.delete-btn {
-    margin-top: 12px;
-    padding: 8px 12px;
-    font-size: 14px;
-    background: #ff4444;
+/* DELETE BUTTON INSIDE FULL STORY */
+#deleteStoryButton {
+    position: absolute;
+    top: 20px;
+    right: 60px;
+    font-size: 20px;
+    background: black;
     color: white;
     border: none;
-    border-radius: 8px;
+    padding: 10px 12px;
+    border-radius: 50%;
     cursor: pointer;
+    opacity: 0.9;
+    display: none;
 }
-.delete-btn:hover {
-    opacity: 0.85;
+
+#deleteStoryButton:hover {
+    opacity: 1;
 }
 
 #closeFullStory{position:absolute; top:20px; right:25px; font-size:22px; cursor:pointer; opacity:0.7;}
@@ -192,6 +198,10 @@ const closeFullStory = document.getElementById("closeFullStory");
 const fullStoryTitle = document.getElementById("fullStoryTitle");
 const fullStoryBody = document.getElementById("fullStoryBody");
 
+let currentStoryIndex = null;
+const deleteStoryButton = document.getElementById("deleteStoryButton");
+
+    
 // PANEL TOGGLES
 addButton.onclick = () => storyPanel.classList.add("active");
 closeStory.onclick = () => storyPanel.classList.remove("active");
@@ -199,13 +209,18 @@ openSearchButton.onclick = () => searchOverlay.classList.add("active");
 closeSearch.onclick = () => searchOverlay.classList.remove("active");
 closeFullStory.onclick = () => fullStoryPanel.classList.remove("active");
 
-function openFullStory(item) {
+function openFullStory(item, index) {
+    currentStoryIndex = index;
+
     fullStoryTitle.textContent = item.title;
     fullStoryBody.innerHTML = `
-    ${item.image ? `<img class="full-image" src="${item.image}">` : ""}
-    <div class="full-text">${item.body.replace(/\n/g, "<br>")}</div>
-`;
+        ${item.image ? `<img class="full-image" src="${item.image}">` : ""}
+        <div class="full-text">${item.body.replace(/\n/g, "<br>")}</div>
+    `;
 
+    deleteStoryButton.style.display = "block";
+    fullStoryPanel.classList.add("active");
+}
 
     fullStoryPanel.classList.add("active");
 }
@@ -222,7 +237,7 @@ function renderNews() {
     <div class="news-body">${item.body.substring(0, 150)}...</div>
     <button class="delete-btn" data-id="${item.id}">Delete</button>
 `;
-        div.onclick = () => openFullStory(item);
+       div.onclick = () => openFullStory(item, i);
         newsList.appendChild(div);
     });
 }
@@ -307,6 +322,19 @@ document.addEventListener("DOMContentLoaded", () => {
     if (saved) news = JSON.parse(saved);
     renderNews();
 });
+
+
+deleteStoryButton.onclick = () => {
+    if (currentStoryIndex !== null) {
+        news.splice(currentStoryIndex, 1);
+        localStorage.setItem("cosmovonNews", JSON.stringify(news));
+        renderNews();
+        fullStoryPanel.classList.remove("active");
+        deleteStoryButton.style.display = "none";
+    }
+};
+
+    
 </script>
 
 
