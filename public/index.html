@@ -97,7 +97,7 @@ main{max-width:900px;margin:20px auto;padding:0 16px;}
 
 <div id="fullStoryPanel">
     <div id="closeFullStory">✕</div>
-    <button onclick="askDeleteStory(currentStoryIndex)" id="deleteStoryButton">🗑️</button>
+    <button onclick="askDeleteStory(STORY_ID)">🗑️</button>
     <div id="fullStoryTitle"></div>
     <div id="fullStoryBody"></div>
 </div>
@@ -132,13 +132,13 @@ main{max-width:900px;margin:20px auto;padding:0 16px;}
 
 </div>
 
-<div id="formatBar" class="format-bar hidden">
-  <button data-cmd="bold"><b>B</b></button>
-  <button data-cmd="italic"><i>I</i></button>
-  <button data-cmd="underline"><u>U</u></button>
-  <button data-cmd="strike"><s>S</s></button>
-</div>
+<div id="editMenu" class="edit-menu hidden">
 
+  <button onclick="formatText('bold')">B</button>
+
+  <button onclick="formatText('italic')">I</button>
+
+</div>
 <style>
 
     .edit-menu {
@@ -300,54 +300,6 @@ main{max-width:900px;margin:20px auto;padding:0 16px;}
     opacity: 1;
 }
 
-
-    
-.format-bar {
-  position: fixed;
-  bottom: 90px;
-  left: 50%;
-  transform: translateX(-50%) scale(0.95);
-  padding: 10px 14px;
-  background: rgba(20, 20, 20, 0.92);
-  backdrop-filter: blur(12px);
-  border-radius: 14px;
-  display: flex;
-  gap: 12px;
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
-  opacity: 0;
-  pointer-events: none;
-  transition:
-    opacity 0.25s ease,
-    transform 0.25s ease;
-  z-index: 999;
-}
-
-.format-bar button {
-  background: #2a2a2a;
-  border: none;
-  color: white;
-  padding: 9px 12px;
-  border-radius: 10px;
-  font-size: 16px;
-  cursor: pointer;
-  transition: background 0.2s ease, transform 0.15s ease;
-}
-
-.format-bar button:active {
-  transform: scale(0.92);
-}
-
-.format-bar button:hover {
-  background: #3b3b3b;
-}
-
-.format-bar.visible {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateX(-50%) scale(1);
-}
-
-
 #closeFullStory{position:absolute; top:20px; right:25px; font-size:22px; cursor:pointer; opacity:0.7;}
 #fullStoryTitle{font-family:"Instrument Serif", serif; font-size:28px; margin-top:60px; margin-bottom:20px;}
 #fullStoryBody{font-family:"TikTok Sans",sans-serif; font-size:17px; line-height:1.6;}
@@ -376,58 +328,38 @@ const fullStoryPanel = document.getElementById("fullStoryPanel");
 const closeFullStory = document.getElementById("closeFullStory");
 const fullStoryTitle = document.getElementById("fullStoryTitle");
 const fullStoryBody = document.getElementById("fullStoryBody");
-const deleteStoryButton = document.getElementById("deleteStoryButton");
-
-const deleteConfirm = document.getElementById("deleteConfirm");
-const cancelDelete = document.getElementById("cancelDelete");
-const confirmDelete = document.getElementById("confirmDelete");
-
-const editMenu = document.getElementById("editMenu");
 
 let currentStoryIndex = null;
-let editingStoryId = null;
-let storyToDelete = null;
+const deleteStoryButton = document.getElementById("deleteStoryButton");
 
-const formatBar = document.getElementById('formatBar');
-let storyContentEl = null;
 
-function openStoryEditor(storyElement) {
-  storyContentEl = storyElement.querySelector('.story-content');
-
-  // Show formatting bar
-  formatBar.classList.add('visible');
-}
-
-function closeStoryEditor() {
-  storyContentEl = null;
-  formatBar.classList.remove('visible');
-}
-
-formatBar.addEventListener('click', e => {
-  const btn = e.target.closest('button');
-  if (!btn) return;
-
-  const cmd = btn.dataset.cmd;
-
-  document.execCommand(cmd, false, null);
-});
-
-/* PANEL TOGGLES ------------------------------------ */
+// PANEL TOGGLES
 addButton.onclick = () => storyPanel.classList.add("active");
 closeStory.onclick = () => storyPanel.classList.remove("active");
-
 openSearchButton.onclick = () => searchOverlay.classList.add("active");
 closeSearch.onclick = () => searchOverlay.classList.remove("active");
-
 closeFullStory.onclick = () => {
     fullStoryPanel.classList.remove("active");
     deleteStoryButton.style.display = "none";
-    editMenu.classList.add("hidden");
 };
 
 
+// OPEN FULL STORY
+function openFullStory(item, index) {
+    currentStoryIndex = index;
 
-/* RENDER STORIES ------------------------------------ */
+    fullStoryTitle.textContent = item.title;
+    fullStoryBody.innerHTML = `
+        ${item.image ? `<img class="full-image" src="${item.image}">` : ""}
+        <div class="full-text">${item.body.replace(/\n/g, "<br>")}</div>
+    `;
+
+    deleteStoryButton.style.display = "block";
+    fullStoryPanel.classList.add("active");
+}
+
+
+// RENDER ALL STORIES
 function renderNews() {
     newsList.innerHTML = "";
 
@@ -447,29 +379,34 @@ function renderNews() {
 }
 
 
+// SEARCH
+searchBox.addEventListener("input", () => {
+    const q = searchBox.value.toLowerCase();
+    searchResults.innerHTML = "";
+    if (!q.trim()) return;
 
-/* OPEN FULL STORY ---------------------------------- */
-function openFullStory(item, index) {
-    currentStoryIndex = index;
-    editingStoryId = index;  // enable editing
+    news
+        .filter(n => n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q))
+        .forEach((item, i) => {
+            const d = document.createElement("div");
+            d.className = "search-result-item";
 
-    fullStoryTitle.textContent = item.title;
+            d.innerHTML = `
+                <div class="news-title">${item.title}</div>
+                <div class="news-body">${item.body.substring(0, 120)}...</div>
+            `;
 
-    fullStoryBody.innerHTML = `
-        ${item.image ? `<img class="full-image" src="${item.image}">` : ""}
-        <div class="story-text full-text" data-story="${index}">
-            ${item.body.replace(/\n/g, "<br>")}
-        </div>
-    `;
+            d.onclick = () => {
+                openFullStory(item, i);
+                searchOverlay.classList.remove("active");
+            };
 
-    deleteStoryButton.style.display = "block";
-    editMenu.classList.remove("hidden");
-    fullStoryPanel.classList.add("active");
-}
+            searchResults.appendChild(d);
+        });
+});
 
 
-
-/* PUBLISH STORY ------------------------------------ */
+// PUBLISH
 publishButton.onclick = () => {
     const title = storyTitle.value.trim();
     const body = storyBody.value.trim();
@@ -481,7 +418,9 @@ publishButton.onclick = () => {
 
     if (storyImage.files.length > 0) {
         const reader = new FileReader();
-        reader.onload = () => saveNote(title, body, reader.result);
+        reader.onload = () => {
+            saveNote(title, body, reader.result);
+        };
         reader.readAsDataURL(storyImage.files[0]);
     } else {
         saveNote(title, body, null);
@@ -489,6 +428,7 @@ publishButton.onclick = () => {
 };
 
 
+// SAVE STORY
 function saveNote(title, body, image) {
     const item = {
         id: Date.now(),
@@ -509,87 +449,85 @@ function saveNote(title, body, image) {
 }
 
 
+// DELETE FULL STORY
+let storyToDelete = null;
 
-/* SEARCH ------------------------------------------- */
-searchBox.addEventListener("input", () => {
-    const q = searchBox.value.toLowerCase();
-    searchResults.innerHTML = "";
+function askDeleteStory(id) {
 
-    if (!q.trim()) return;
+  storyToDelete = id;
 
-    news.filter(n =>
-        n.title.toLowerCase().includes(q) ||
-        n.body.toLowerCase().includes(q)
-    ).forEach((item, i) => {
-        const d = document.createElement("div");
-        d.className = "search-result-item";
+  document.getElementById("deleteConfirm").classList.remove("hidden");
 
-        d.innerHTML = `
-            <div class="news-title">${item.title}</div>
-            <div class="news-body">${item.body.substring(0, 120)}...</div>
-        `;
+}
 
-        d.onclick = () => {
-            openFullStory(item, i);
-            searchOverlay.classList.remove("active");
-        };
+document.getElementById("cancelDelete").onclick = () => {
 
-        searchResults.appendChild(d);
-    });
-});
+  storyToDelete = null;
 
+  document.getElementById("deleteConfirm").classList.add("hidden");
 
-
-/* DELETE STORY ------------------------------------- */
-deleteStoryButton.onclick = () => {
-    storyToDelete = currentStoryIndex;
-    deleteConfirm.classList.remove("hidden");
 };
 
-cancelDelete.onclick = () => {
-    storyToDelete = null;
-    deleteConfirm.classList.add("hidden");
+document.getElementById("confirmDelete").onclick = () => {
+
+  if (storyToDelete) deleteStory(storyToDelete);
+
+  storyToDelete = null;
+
+  document.getElementById("deleteConfirm").classList.add("hidden");
+
 };
 
-confirmDelete.onclick = () => {
-    if (storyToDelete !== null) {
-        news.splice(storyToDelete, 1);
-        localStorage.setItem("cosmovonNews", JSON.stringify(news));
-        renderNews();
-    }
-    fullStoryPanel.classList.remove("active");
-    deleteConfirm.classList.add("hidden");
-};
+let editingStoryId = null;
 
+function openStoryForEdit(id) {
 
+  editingStoryId = id;
 
+  document.getElementById("editMenu").classList.remove("hidden");
 
-/* EDIT BUTTONS ------------------------------------- */
+}
+
+function closeEditor() {
+
+  editingStoryId = null;
+
+  document.getElementById("editMenu").classList.add("hidden");
+
+}
+
 function formatText(style) {
-    if (editingStoryId === null) return;
 
-    const el = document.querySelector(`[data-story="${editingStoryId}"]`);
-    if (!el) return;
+  if (!editingStoryId) return;
 
-    if (style === "bold") {
-        el.style.fontWeight = el.style.fontWeight === "bold" ? "normal" : "bold";
-    }
+  const el = document.querySelector[data-story="${editingStoryId}"] .story-text);
 
-    if (style === "italic") {
-        el.style.fontStyle = el.style.fontStyle === "italic" ? "normal" : "italic";
-    }
+  if (!el) return;
+
+  if (style === "bold") {
+
+    el.style.fontWeight = el.style.fontWeight === "bold" ? "normal" : "bold";
+
+  }
+
+  if (style === "italic") {
+
+    el.style.fontStyle = el.style.fontStyle === "italic" ? "normal" : "italic";
+
+  }
+
 }
 
 
-
-/* LOAD ON START ------------------------------------ */
+// LOAD ON START
 document.addEventListener("DOMContentLoaded", () => {
     const saved = localStorage.getItem("cosmovonNews");
     if (saved) news = JSON.parse(saved);
     renderNews();
 });
-</script>
 
+
+</script>
 
 
 </body>
