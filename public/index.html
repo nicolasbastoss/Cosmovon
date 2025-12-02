@@ -97,7 +97,7 @@ main{max-width:900px;margin:20px auto;padding:0 16px;}
 
 <div id="fullStoryPanel">
     <div id="closeFullStory">✕</div>
-    <button id="deleteStoryButton">🗑️</button>
+    <button onclick="askDeleteStory(currentStoryIndex)" id="deleteStoryButton">🗑️</button>
     <div id="fullStoryTitle"></div>
     <div id="fullStoryBody"></div>
 </div>
@@ -114,7 +114,138 @@ main{max-width:900px;margin:20px auto;padding:0 16px;}
     <button id="publishButton">Publish</button>
 </div>
 
+<div id="deleteConfirm" class="confirm-popup hidden">
+
+  <div class="confirm-box">
+
+    <p>Are you sure you want to delete this story?</p>
+
+    <div class="confirm-actions">
+
+      <button id="cancelDelete">Cancel</button>
+
+      <button id="confirmDelete">Delete</button>
+
+    </div>
+
+  </div>
+
+</div>
+
+<div id="editMenu" class="edit-menu hidden">
+
+  <button onclick="formatText('bold')">B</button>
+
+  <button onclick="formatText('italic')">I</button>
+
+</div>
 <style>
+
+    .edit-menu {
+
+  position: fixed;
+
+  bottom: 90px;
+
+  left: 50%;
+
+  transform: translateX(-50%);
+
+  background: #111;
+
+  border-radius: 14px;
+
+  padding: 10px 14px;
+
+  display: flex;
+
+  gap: 12px;
+
+  z-index: 9999;
+
+  transition: opacity .15s ease;
+
+}
+
+.edit-menu.hidden {
+
+  opacity: 0;
+
+  pointer-events: none;
+
+}
+
+.confirm-popup {
+
+  position: fixed;
+
+  inset: 0;
+
+  background: rgba(0,0,0,0.55);
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  z-index: 9999;
+
+}
+
+.confirm-popup.hidden {
+
+  display: none;
+
+}
+
+.confirm-box {
+
+  background: #111;
+
+  padding: 18px 22px;
+
+  border-radius: 14px;
+
+  width: 260px;
+
+  color: white;
+
+  animation: popup 0.18s ease-out;
+
+}
+
+.confirm-actions {
+
+  margin-top: 15px;
+
+  display: flex;
+
+  justify-content: space-between;
+
+}
+
+.confirm-actions button {
+
+  padding: 8px 14px;
+
+  border-radius: 8px;
+
+  border: none;
+
+  font-weight: 600;
+
+}
+
+@keyframes popup {
+
+  from { transform: scale(0.9); opacity: 0; }
+
+  to { transform: scale(1); opacity: 1; }
+
+}
+
+
 #fullStoryPanel{
     position:fixed; bottom:0; left:0; width:100%; height:100%;
     background:white; z-index:150; display:flex; flex-direction:column;
@@ -197,38 +328,36 @@ const fullStoryPanel = document.getElementById("fullStoryPanel");
 const closeFullStory = document.getElementById("closeFullStory");
 const fullStoryTitle = document.getElementById("fullStoryTitle");
 const fullStoryBody = document.getElementById("fullStoryBody");
-
-let currentStoryIndex = null;
 const deleteStoryButton = document.getElementById("deleteStoryButton");
 
+const deleteConfirm = document.getElementById("deleteConfirm");
+const cancelDelete = document.getElementById("cancelDelete");
+const confirmDelete = document.getElementById("confirmDelete");
 
-// PANEL TOGGLES
+const editMenu = document.getElementById("editMenu");
+
+let currentStoryIndex = null;
+let editingStoryId = null;
+let storyToDelete = null;
+
+
+
+/* PANEL TOGGLES ------------------------------------ */
 addButton.onclick = () => storyPanel.classList.add("active");
 closeStory.onclick = () => storyPanel.classList.remove("active");
+
 openSearchButton.onclick = () => searchOverlay.classList.add("active");
 closeSearch.onclick = () => searchOverlay.classList.remove("active");
+
 closeFullStory.onclick = () => {
     fullStoryPanel.classList.remove("active");
     deleteStoryButton.style.display = "none";
+    editMenu.classList.add("hidden");
 };
 
 
-// OPEN FULL STORY
-function openFullStory(item, index) {
-    currentStoryIndex = index;
 
-    fullStoryTitle.textContent = item.title;
-    fullStoryBody.innerHTML = `
-        ${item.image ? `<img class="full-image" src="${item.image}">` : ""}
-        <div class="full-text">${item.body.replace(/\n/g, "<br>")}</div>
-    `;
-
-    deleteStoryButton.style.display = "block";
-    fullStoryPanel.classList.add("active");
-}
-
-
-// RENDER ALL STORIES
+/* RENDER STORIES ------------------------------------ */
 function renderNews() {
     newsList.innerHTML = "";
 
@@ -248,34 +377,29 @@ function renderNews() {
 }
 
 
-// SEARCH
-searchBox.addEventListener("input", () => {
-    const q = searchBox.value.toLowerCase();
-    searchResults.innerHTML = "";
-    if (!q.trim()) return;
 
-    news
-        .filter(n => n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q))
-        .forEach((item, i) => {
-            const d = document.createElement("div");
-            d.className = "search-result-item";
+/* OPEN FULL STORY ---------------------------------- */
+function openFullStory(item, index) {
+    currentStoryIndex = index;
+    editingStoryId = index;  // enable editing
 
-            d.innerHTML = `
-                <div class="news-title">${item.title}</div>
-                <div class="news-body">${item.body.substring(0, 120)}...</div>
-            `;
+    fullStoryTitle.textContent = item.title;
 
-            d.onclick = () => {
-                openFullStory(item, i);
-                searchOverlay.classList.remove("active");
-            };
+    fullStoryBody.innerHTML = `
+        ${item.image ? `<img class="full-image" src="${item.image}">` : ""}
+        <div class="story-text full-text" data-story="${index}">
+            ${item.body.replace(/\n/g, "<br>")}
+        </div>
+    `;
 
-            searchResults.appendChild(d);
-        });
-});
+    deleteStoryButton.style.display = "block";
+    editMenu.classList.remove("hidden");
+    fullStoryPanel.classList.add("active");
+}
 
 
-// PUBLISH
+
+/* PUBLISH STORY ------------------------------------ */
 publishButton.onclick = () => {
     const title = storyTitle.value.trim();
     const body = storyBody.value.trim();
@@ -287,9 +411,7 @@ publishButton.onclick = () => {
 
     if (storyImage.files.length > 0) {
         const reader = new FileReader();
-        reader.onload = () => {
-            saveNote(title, body, reader.result);
-        };
+        reader.onload = () => saveNote(title, body, reader.result);
         reader.readAsDataURL(storyImage.files[0]);
     } else {
         saveNote(title, body, null);
@@ -297,7 +419,6 @@ publishButton.onclick = () => {
 };
 
 
-// SAVE STORY
 function saveNote(title, body, image) {
     const item = {
         id: Date.now(),
@@ -318,19 +439,80 @@ function saveNote(title, body, image) {
 }
 
 
-// DELETE FULL STORY
+
+/* SEARCH ------------------------------------------- */
+searchBox.addEventListener("input", () => {
+    const q = searchBox.value.toLowerCase();
+    searchResults.innerHTML = "";
+
+    if (!q.trim()) return;
+
+    news.filter(n =>
+        n.title.toLowerCase().includes(q) ||
+        n.body.toLowerCase().includes(q)
+    ).forEach((item, i) => {
+        const d = document.createElement("div");
+        d.className = "search-result-item";
+
+        d.innerHTML = `
+            <div class="news-title">${item.title}</div>
+            <div class="news-body">${item.body.substring(0, 120)}...</div>
+        `;
+
+        d.onclick = () => {
+            openFullStory(item, i);
+            searchOverlay.classList.remove("active");
+        };
+
+        searchResults.appendChild(d);
+    });
+});
+
+
+
+/* DELETE STORY ------------------------------------- */
 deleteStoryButton.onclick = () => {
-    if (currentStoryIndex !== null) {
-        news.splice(currentStoryIndex, 1);
+    storyToDelete = currentStoryIndex;
+    deleteConfirm.classList.remove("hidden");
+};
+
+cancelDelete.onclick = () => {
+    storyToDelete = null;
+    deleteConfirm.classList.add("hidden");
+};
+
+confirmDelete.onclick = () => {
+    if (storyToDelete !== null) {
+        news.splice(storyToDelete, 1);
         localStorage.setItem("cosmovonNews", JSON.stringify(news));
         renderNews();
-        fullStoryPanel.classList.remove("active");
-        deleteStoryButton.style.display = "none";
     }
+    fullStoryPanel.classList.remove("active");
+    deleteConfirm.classList.add("hidden");
 };
 
 
-// LOAD ON START
+
+
+/* EDIT BUTTONS ------------------------------------- */
+function formatText(style) {
+    if (editingStoryId === null) return;
+
+    const el = document.querySelector(`[data-story="${editingStoryId}"]`);
+    if (!el) return;
+
+    if (style === "bold") {
+        el.style.fontWeight = el.style.fontWeight === "bold" ? "normal" : "bold";
+    }
+
+    if (style === "italic") {
+        el.style.fontStyle = el.style.fontStyle === "italic" ? "normal" : "italic";
+    }
+}
+
+
+
+/* LOAD ON START ------------------------------------ */
 document.addEventListener("DOMContentLoaded", () => {
     const saved = localStorage.getItem("cosmovonNews");
     if (saved) news = JSON.parse(saved);
