@@ -131,14 +131,6 @@ main{max-width:900px;margin:20px auto;padding:0 16px;}
   </div>
 
 </div>
-
-<div id="editMenu" class="edit-menu hidden">
-
-  <button onclick="formatText('bold')">B</button>
-
-  <button onclick="formatText('italic')">I</button>
-
-</div>
 <style>
 
     .edit-menu {
@@ -300,6 +292,54 @@ main{max-width:900px;margin:20px auto;padding:0 16px;}
     opacity: 1;
 }
 
+
+    
+.format-bar {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%) scale(0.95);
+  padding: 10px 14px;
+  background: rgba(20, 20, 20, 0.92);
+  backdrop-filter: blur(12px);
+  border-radius: 14px;
+  display: flex;
+  gap: 12px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.25s ease,
+    transform 0.25s ease;
+  z-index: 999;
+}
+
+.format-bar button {
+  background: #2a2a2a;
+  border: none;
+  color: white;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.format-bar button:active {
+  transform: scale(0.92);
+}
+
+.format-bar button:hover {
+  background: #3b3b3b;
+}
+
+.format-bar.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) scale(1);
+}
+
+
 #closeFullStory{position:absolute; top:20px; right:25px; font-size:22px; cursor:pointer; opacity:0.7;}
 #fullStoryTitle{font-family:"Instrument Serif", serif; font-size:28px; margin-top:60px; margin-bottom:20px;}
 #fullStoryBody{font-family:"TikTok Sans",sans-serif; font-size:17px; line-height:1.6;}
@@ -340,7 +380,29 @@ let currentStoryIndex = null;
 let editingStoryId = null;
 let storyToDelete = null;
 
+const formatBar = document.getElementById('formatBar');
+let storyContentEl = null;
 
+function openStoryEditor(storyElement) {
+  storyContentEl = storyElement.querySelector('.story-content');
+
+  // Show formatting bar
+  formatBar.classList.add('visible');
+}
+
+function closeStoryEditor() {
+  storyContentEl = null;
+  formatBar.classList.remove('visible');
+}
+
+formatBar.addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+
+  const cmd = btn.dataset.cmd;
+
+  document.execCommand(cmd, false, null);
+});
 
 /* PANEL TOGGLES ------------------------------------ */
 addButton.onclick = () => storyPanel.classList.add("active");
@@ -519,6 +581,13 @@ document.addEventListener("DOMContentLoaded", () => {
     renderNews();
 });
 </script>
+
+<div id="formatBar" class="format-bar hidden">
+  <button data-cmd="bold"><b>B</b></button>
+  <button data-cmd="italic"><i>I</i></button>
+  <button data-cmd="underline"><u>U</u></button>
+  <button data-cmd="strike"><s>S</s></button>
+</div>
 
 
 </body>
