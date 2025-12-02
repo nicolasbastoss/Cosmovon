@@ -328,38 +328,36 @@ const fullStoryPanel = document.getElementById("fullStoryPanel");
 const closeFullStory = document.getElementById("closeFullStory");
 const fullStoryTitle = document.getElementById("fullStoryTitle");
 const fullStoryBody = document.getElementById("fullStoryBody");
-
-let currentStoryIndex = null;
 const deleteStoryButton = document.getElementById("deleteStoryButton");
 
+const deleteConfirm = document.getElementById("deleteConfirm");
+const cancelDelete = document.getElementById("cancelDelete");
+const confirmDelete = document.getElementById("confirmDelete");
 
-// PANEL TOGGLES
+const editMenu = document.getElementById("editMenu");
+
+let currentStoryIndex = null;
+let editingStoryId = null;
+let storyToDelete = null;
+
+
+
+/* PANEL TOGGLES ------------------------------------ */
 addButton.onclick = () => storyPanel.classList.add("active");
 closeStory.onclick = () => storyPanel.classList.remove("active");
+
 openSearchButton.onclick = () => searchOverlay.classList.add("active");
 closeSearch.onclick = () => searchOverlay.classList.remove("active");
+
 closeFullStory.onclick = () => {
     fullStoryPanel.classList.remove("active");
     deleteStoryButton.style.display = "none";
+    editMenu.classList.add("hidden");
 };
 
 
-// OPEN FULL STORY
-function openFullStory(item, index) {
-    currentStoryIndex = index;
 
-    fullStoryTitle.textContent = item.title;
-    fullStoryBody.innerHTML = `
-        ${item.image ? `<img class="full-image" src="${item.image}">` : ""}
-        <div class="full-text">${item.body.replace(/\n/g, "<br>")}</div>
-    `;
-
-    deleteStoryButton.style.display = "block";
-    fullStoryPanel.classList.add("active");
-}
-
-
-// RENDER ALL STORIES
+/* RENDER STORIES ------------------------------------ */
 function renderNews() {
     newsList.innerHTML = "";
 
@@ -379,34 +377,29 @@ function renderNews() {
 }
 
 
-// SEARCH
-searchBox.addEventListener("input", () => {
-    const q = searchBox.value.toLowerCase();
-    searchResults.innerHTML = "";
-    if (!q.trim()) return;
 
-    news
-        .filter(n => n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q))
-        .forEach((item, i) => {
-            const d = document.createElement("div");
-            d.className = "search-result-item";
+/* OPEN FULL STORY ---------------------------------- */
+function openFullStory(item, index) {
+    currentStoryIndex = index;
+    editingStoryId = index;  // enable editing
 
-            d.innerHTML = `
-                <div class="news-title">${item.title}</div>
-                <div class="news-body">${item.body.substring(0, 120)}...</div>
-            `;
+    fullStoryTitle.textContent = item.title;
 
-            d.onclick = () => {
-                openFullStory(item, i);
-                searchOverlay.classList.remove("active");
-            };
+    fullStoryBody.innerHTML = `
+        ${item.image ? `<img class="full-image" src="${item.image}">` : ""}
+        <div class="story-text full-text" data-story="${index}">
+            ${item.body.replace(/\n/g, "<br>")}
+        </div>
+    `;
 
-            searchResults.appendChild(d);
-        });
-});
+    deleteStoryButton.style.display = "block";
+    editMenu.classList.remove("hidden");
+    fullStoryPanel.classList.add("active");
+}
 
 
-// PUBLISH
+
+/* PUBLISH STORY ------------------------------------ */
 publishButton.onclick = () => {
     const title = storyTitle.value.trim();
     const body = storyBody.value.trim();
@@ -418,9 +411,7 @@ publishButton.onclick = () => {
 
     if (storyImage.files.length > 0) {
         const reader = new FileReader();
-        reader.onload = () => {
-            saveNote(title, body, reader.result);
-        };
+        reader.onload = () => saveNote(title, body, reader.result);
         reader.readAsDataURL(storyImage.files[0]);
     } else {
         saveNote(title, body, null);
@@ -428,7 +419,6 @@ publishButton.onclick = () => {
 };
 
 
-// SAVE STORY
 function saveNote(title, body, image) {
     const item = {
         id: Date.now(),
@@ -449,84 +439,85 @@ function saveNote(title, body, image) {
 }
 
 
-// DELETE FULL STORY
-let storyToDelete = null;
 
-function askDeleteStory(id) {
+/* SEARCH ------------------------------------------- */
+searchBox.addEventListener("input", () => {
+    const q = searchBox.value.toLowerCase();
+    searchResults.innerHTML = "";
 
-  storyToDelete = id;
+    if (!q.trim()) return;
 
-  document.getElementById("deleteConfirm").classList.remove("hidden");
+    news.filter(n =>
+        n.title.toLowerCase().includes(q) ||
+        n.body.toLowerCase().includes(q)
+    ).forEach((item, i) => {
+        const d = document.createElement("div");
+        d.className = "search-result-item";
 
-}
+        d.innerHTML = `
+            <div class="news-title">${item.title}</div>
+            <div class="news-body">${item.body.substring(0, 120)}...</div>
+        `;
 
-document.getElementById("cancelDelete").onclick = () => {
+        d.onclick = () => {
+            openFullStory(item, i);
+            searchOverlay.classList.remove("active");
+        };
 
-  storyToDelete = null;
+        searchResults.appendChild(d);
+    });
+});
 
-  document.getElementById("deleteConfirm").classList.add("hidden");
 
+
+/* DELETE STORY ------------------------------------- */
+deleteStoryButton.onclick = () => {
+    storyToDelete = currentStoryIndex;
+    deleteConfirm.classList.remove("hidden");
 };
 
-document.getElementById("confirmDelete").onclick = () => {
-
-  if (storyToDelete) deleteStory(storyToDelete);
-
-  storyToDelete = null;
-
-  document.getElementById("deleteConfirm").classList.add("hidden");
-
+cancelDelete.onclick = () => {
+    storyToDelete = null;
+    deleteConfirm.classList.add("hidden");
 };
 
-let editingStoryId = null;
+confirmDelete.onclick = () => {
+    if (storyToDelete !== null) {
+        news.splice(storyToDelete, 1);
+        localStorage.setItem("cosmovonNews", JSON.stringify(news));
+        renderNews();
+    }
+    fullStoryPanel.classList.remove("active");
+    deleteConfirm.classList.add("hidden");
+};
 
-function openStoryForEdit(id) {
 
-  editingStoryId = id;
 
-  document.getElementById("editMenu").classList.remove("hidden");
 
-}
-
-function closeEditor() {
-
-  editingStoryId = null;
-
-  document.getElementById("editMenu").classList.add("hidden");
-
-}
-
+/* EDIT BUTTONS ------------------------------------- */
 function formatText(style) {
+    if (editingStoryId === null) return;
 
-  if (!editingStoryId) return;
+    const el = document.querySelector(`[data-story="${editingStoryId}"]`);
+    if (!el) return;
 
-  const el = document.querySelector[data-story="${editingStoryId}"] .story-text);
+    if (style === "bold") {
+        el.style.fontWeight = el.style.fontWeight === "bold" ? "normal" : "bold";
+    }
 
-  if (!el) return;
-
-  if (style === "bold") {
-
-    el.style.fontWeight = el.style.fontWeight === "bold" ? "normal" : "bold";
-
-  }
-
-  if (style === "italic") {
-
-    el.style.fontStyle = el.style.fontStyle === "italic" ? "normal" : "italic";
-
-  }
-
+    if (style === "italic") {
+        el.style.fontStyle = el.style.fontStyle === "italic" ? "normal" : "italic";
+    }
 }
 
 
-// LOAD ON START
+
+/* LOAD ON START ------------------------------------ */
 document.addEventListener("DOMContentLoaded", () => {
     const saved = localStorage.getItem("cosmovonNews");
     if (saved) news = JSON.parse(saved);
     renderNews();
 });
-
-
 </script>
 
 
